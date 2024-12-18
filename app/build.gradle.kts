@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.devtools.ksp")
+    id("kotlin-parcelize")
 }
 
 android {
@@ -60,4 +62,18 @@ dependencies {
 
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.navigation.compose)
+
+    implementation(libs.androidx.emoji2)
+    implementation(libs.androidx.emoji2.views)
+    implementation(libs.androidx.emoji2.views.helper)
+    implementation(libs.androidx.emoji2.emojipicker)
+
+    implementation(libs.colorpicker.compose)
+
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.ktx)
+
+    implementation(libs.gson)
+
 }

@@ -1,32 +1,18 @@
 package com.phantomknight287.coin.helpers
 
-
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
-import androidx.core.content.pm.PackageInfoCompat
+import android.os.Vibrator
+import android.os.VibratorManager
 
-data class AppVersion(
-    val versionName: String,
-    val versionNumber: Long,
-)
-
-fun getAppVersion(
-    context: Context,
-): AppVersion? {
-    return try {
-        val packageManager = context.packageManager
-        val packageName = context.packageName
-        val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
-        } else {
-            packageManager.getPackageInfo(packageName, 0)
-        }
-        AppVersion(
-            versionName = packageInfo.versionName ?: "Coin",
-            versionNumber = PackageInfoCompat.getLongVersionCode(packageInfo),
-        )
-    } catch (e: Exception) {
-        null
+fun getVibrator(context: Context): Vibrator {
+    val vib = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val vibratorManager =
+            context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+        vibratorManager.defaultVibrator
+    } else {
+        @Suppress("DEPRECATION")
+        context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
     }
+    return vib
 }
