@@ -4,9 +4,13 @@ import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Entity
+import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
+import com.phantomknight287.coin.screens.categories.Category
+import com.phantomknight287.coin.screens.categories.CategoryDao
 
 @Entity(tableName = "app_state")
 data class AppState(
@@ -25,5 +29,14 @@ interface AppStateDao {
     suspend fun deleteAppState(state: AppState)
 
     @Query("Select * from app_state limit 1")
-    suspend fun getAppState(): AppState
+    suspend fun getAppState(): AppState?
+
+    @Insert
+    suspend fun insertCategories(categories: List<Category>)
+
+    @Transaction
+    suspend fun insertCategoriesAndAppState(categories: List<Category>, appState: AppState) {
+        insertAppState(appState)
+        insertCategories(categories)
+    }
 }

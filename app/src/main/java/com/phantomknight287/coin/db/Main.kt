@@ -6,14 +6,20 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.phantomknight287.coin.db.app_state.AppState
+import com.phantomknight287.coin.db.app_state.AppStateDao
+import com.phantomknight287.coin.db.transaction.DateTypeConverter
+import com.phantomknight287.coin.db.transaction.Transaction
+import com.phantomknight287.coin.db.transaction.TransactionDao
 import com.phantomknight287.coin.screens.categories.Category
 import com.phantomknight287.coin.screens.categories.CategoryDao
 import com.phantomknight287.coin.screens.categories.CategoryTypeConverter
 
-@Database(entities = [Category::class, AppState::class], version = 1)
-@TypeConverters(CategoryTypeConverter::class)
+@Database(entities = [Category::class, AppState::class, Transaction::class], version = 1)
+@TypeConverters(CategoryTypeConverter::class, DateTypeConverter::class)
 abstract class CoinDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
+    abstract fun appStateDao(): AppStateDao
+    abstract fun transactionDao(): TransactionDao
 
     companion object {
         // Volatile ensures the instance is immediately visible to other threads
@@ -36,13 +42,6 @@ abstract class CoinDatabase : RoomDatabase() {
                 CoinDatabase::class.java,
                 "coin_database"
             )
-                // Optional: add migration strategy
-                // .addMigrations(MIGRATION_1_2)
-
-                // Optional: allow queries on main thread (not recommended for production)
-                // .allowMainThreadQueries()
-
-                // Fallback strategy if migration fails
                 .fallbackToDestructiveMigration()
                 .build()
         }

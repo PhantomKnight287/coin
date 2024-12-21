@@ -1,6 +1,7 @@
 package com.phantomknight287.coin.screens.categories
 
 import android.os.VibrationEffect
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -15,16 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,31 +35,25 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.phantomknight287.coin.ui.theme.CoinTheme
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.unit.em
-import com.phantomknight287.coin.constants.CoinConstants
 import com.phantomknight287.coin.screens.categories.components.Switcher
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import com.phantomknight287.coin.db.app_state.AppState
 import com.phantomknight287.coin.helpers.getVibrator
-import com.phantomknight287.coin.screens.categories.components.CreateCategoryModal
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,6 +75,13 @@ fun CategoriesScreen(
     val context = LocalContext.current
     val vib = getVibrator(context)
     val coroutineScope = rememberCoroutineScope()
+    var loading by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            viewModel.fetchFromDB()
+        }
+    }
     Scaffold(modifier,
         topBar = {
             TopAppBar(title = {
@@ -99,15 +99,43 @@ fun CategoriesScreen(
                 actions = {
                     IconButton(
                         onClick = {
+                            loading = true
+                            coroutineScope.launch {
+                                var success = true
+                                try {
+                                    viewModel.insertAppStateAndCategoriesTransaction(
+                                        AppState(
+                                            categoriesOnboardingCompleted = true
+                                        )
+                                    )
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                    Toast.makeText(
+                                        context,
+                                        e.message ?: "An error occurred",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    success = false
+                                } finally {
+                                    loading = false
+                                }
 
+                                if (success) {
+                                    onContinue()
+                                }
+                            }
                         },
                         enabled = selectedIncomeCategories.isNotEmpty() || selectedExpenseCategories.isNotEmpty()
                     ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowForward,
-                            tint = if (isSystemInDarkTheme()) Color.White else Color.Black,
-                            contentDescription = "Continue"
-                        )
+                        when (loading) {
+                            true -> CircularProgressIndicator()
+                            false -> Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                tint = if (isSystemInDarkTheme()) Color.White else Color.Black,
+                                contentDescription = "Continue"
+                            )
+                        }
+
                     }
                 }
             )

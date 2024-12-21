@@ -4,6 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Entity
+import androidx.room.Ignore
 import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
@@ -35,17 +36,15 @@ class CategoryTypeConverter {
 @Entity(tableName = "categories")
 data class Category(
     @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
+    var categoryId: Long = 0,
     val name: String,
     val icon: String,
-    /**
-     * The hex color for bg of icon
-     */
     val color: String,
     val type: CategoryType,
-    @ColumnInfo(name = "from_database")
-    var fromDatabase: Boolean = false,
-) : Serializable
+) : Serializable {
+    @Ignore
+    var fromDatabase: Boolean = false
+}
 
 
 @Dao
@@ -64,6 +63,9 @@ interface CategoryDao {
 
     @Delete
     suspend fun delete(category: Category)
+
+    @Insert
+    suspend fun insertAll(categories: List<Category>)
 }
 
 val SUGGESTED_EXPENSE_CATEGORIES = mutableListOf(

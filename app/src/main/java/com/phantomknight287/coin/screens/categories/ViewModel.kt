@@ -2,7 +2,9 @@ package com.phantomknight287.coin.screens.categories
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.room.Transaction
 import com.phantomknight287.coin.db.CoinDatabase
+import com.phantomknight287.coin.db.app_state.AppState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -14,27 +16,48 @@ class CategoriesViewModel(private val database: CoinDatabase) : ViewModel() {
     val expenseCategories: StateFlow<List<Category>> = _selectedExpenseCategories.asStateFlow()
     val incomeCategories: StateFlow<List<Category>> = _selectedIncomeCategories.asStateFlow();
 
+    suspend fun fetchFromDB() {
+        try {
+            val items = database.categoryDao().getIncomeCategories()
+            _selectedIncomeCategories.value = items.map { item ->
+                item.fromDatabase = true
+                item
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        try {
+            val items = database.categoryDao().getExpenseCategories()
+            _selectedExpenseCategories.value = items.map {
+                it.fromDatabase = true
+                it
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     init {
         viewModelScope.launch {
-            try {
-                val items = database.categoryDao().getIncomeCategories()
-                _selectedIncomeCategories.value = items.map { item ->
-                    item.fromDatabase = true
-                    item
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-            try {
-                val items = database.categoryDao().getExpenseCategories()
-                _selectedExpenseCategories.value = items.map {
-                    it.fromDatabase = true
-                    it
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
+            fetchFromDB()
         }
+    }
+
+
+    suspend fun insertAppStateAndCategoriesTransaction(state: AppState) {
+        val categoriesToInsert =
+            (_selectedExpenseCategories.value + _selectedIncomeCategories.value)
+                .filter { it.fromDatabase == false } // remove all categories already present in database
+        database.appStateDao().insertCategoriesAndAppState(categoriesToInsert, state)
+        fetchFromDB()  // this is to replace the existing `id=0` with actual IDs
+    }
+
+    suspend fun insertAllCategoriesToDatabase() {
+        val categoriesToInsert =
+            (_selectedExpenseCategories.value + _selectedIncomeCategories.value)
+                .filter { it.fromDatabase == false } // remove all categories already present in database
+
+        database.categoryDao().insertAll(categoriesToInsert)
     }
 
     fun addExpenseCategory(category: Category) {
