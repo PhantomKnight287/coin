@@ -32,7 +32,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,9 +59,18 @@ import java.time.Instant
 import java.util.Date
 import java.util.Locale
 import kotlin.math.absoluteValue
+import androidx.compose.runtime.setValue
+import com.phantomknight287.coin.screens.home.subscreens.SettingsScreen
 
 enum class FABClick {
     Transaction
+}
+
+enum class ActiveTab {
+    Transactions,
+    Analytics,
+    Budgets,
+    Settings
 }
 
 @Composable
@@ -72,6 +84,9 @@ fun HomeScreen(
     val balance by viewModel.balance.collectAsState()
     val transactions by viewModel.transactions.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    var activeTab by rememberSaveable {
+        mutableIntStateOf(ActiveTab.Transactions.ordinal)
+    }
     LaunchedEffect(Unit) {
         coroutineScope.launch {
             viewModel.getBalance()
@@ -85,25 +100,28 @@ fun HomeScreen(
     Scaffold(
         modifier = modifier,
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    onFABClick(FABClick.Transaction)
+            if (activeTab == ActiveTab.Settings.ordinal) null
+            else
+                FloatingActionButton(
+                    onClick = {
+                        onFABClick(FABClick.Transaction)
+                    }
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = "Add")
                 }
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Add")
-            }
         },
         bottomBar = {
             BottomAppBar {
                 NavigationBarItem(
-                    selected = true,
-                    onClick = {},
+                    selected = activeTab == ActiveTab.Transactions.ordinal,
+                    onClick = {
+                        activeTab = ActiveTab.Transactions.ordinal;
+                    },
                     icon = {
                         Icon(
                             Icons.AutoMirrored.Filled.ReceiptLong,
-                            contentDescription = "Transactions",
-
-                            )
+                            contentDescription = "Transactions"
+                        )
                     },
                     label = {
                         Text(
@@ -113,12 +131,14 @@ fun HomeScreen(
                     },
                 )
                 NavigationBarItem(
-                    selected = false,
-                    onClick = {},
+                    selected = activeTab == ActiveTab.Analytics.ordinal,
+                    onClick = {
+                        activeTab = ActiveTab.Analytics.ordinal;
+                    },
                     icon = {
                         Icon(
                             painterResource(R.drawable.outline_monitoring_24),
-                            contentDescription = "Insights",
+                            contentDescription = "Analytics",
                         )
                     },
                     label = {
@@ -129,8 +149,10 @@ fun HomeScreen(
                     },
                 )
                 NavigationBarItem(
-                    selected = false,
-                    onClick = {},
+                    selected = activeTab == ActiveTab.Budgets.ordinal,
+                    onClick = {
+                        activeTab = ActiveTab.Budgets.ordinal;
+                    },
                     icon = {
                         Icon(
                             Icons.Filled.Inventory2,
@@ -145,8 +167,10 @@ fun HomeScreen(
                     },
                 )
                 NavigationBarItem(
-                    selected = false,
-                    onClick = {},
+                    selected = activeTab == ActiveTab.Settings.ordinal,
+                    onClick = {
+                        activeTab = ActiveTab.Settings.ordinal;
+                    },
                     icon = {
                         Icon(
                             Icons.Filled.Settings,
@@ -163,127 +187,127 @@ fun HomeScreen(
             }
         },
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .padding(it)
-                .padding(16.dp)
-                .fillMaxSize(),
-
+        if (activeTab == ActiveTab.Settings.ordinal) SettingsScreen(modifier = Modifier.padding(it))
+        else
+            LazyColumn(
+                modifier = Modifier
+                    .padding(it)
+                    .padding(16.dp)
+                    .fillMaxSize(),
             ) {
-            item() {
-                Row {
-                    Icon(
-                        Icons.Filled.Search,
-                        contentDescription = "Search transactions"
+                item() {
+                    Row {
+                        Icon(
+                            Icons.Filled.Search,
+                            contentDescription = "Search transactions"
+                        )
+                    }
+                }
+                item() {
+                    Spacer(
+                        modifier = Modifier.height(16.dp)
                     )
                 }
-            }
-            item() {
-                Spacer(
-                    modifier = Modifier.height(16.dp)
-                )
-            }
-            item() {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text("Net total")
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
+                item() {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
+                        Text("Net total")
                         Row(
+                            horizontalArrangement = Arrangement.Center,
                             verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Text(
+                                    text = "${if (balance < 0) "-" else ""}${currency.symbol}",
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    fontSize = 24.sp
+                                )
+                                Text(
+                                    text = balance.absoluteValue.toString(),
+                                    fontSize = 40.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                        Spacer(
+                            modifier = Modifier.height(32.dp),
+                        )
+
+                    }
+                }
+                itemsIndexed(
+                    transactions
+                ) { index, item ->
+                    if (index == 0) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "${if (balance < 0) "-" else ""}${currency.symbol}",
-                                color = MaterialTheme.colorScheme.secondary,
-                                fontSize = 24.sp
+                                text = SimpleDateFormat(
+                                    "E, dd MMM",
+                                    Locale.getDefault()
+                                ).format(item.transaction.createdAt),
+                                fontWeight = FontWeight.Bold,
                             )
+                            val dayTotal = transactions
+                                .filter { it.transaction.createdAt.day == item.transaction.createdAt.day }
+                                .sumOf { it.transaction.amount }
                             Text(
-                                text = balance.absoluteValue.toString(),
-                                fontSize = 40.sp,
+                                text = formatCurrency(dayTotal, currency),
                                 fontWeight = FontWeight.Bold,
                             )
                         }
+                        HorizontalDivider(
+                            thickness = 1.dp
+                        )
+                        Spacer(
+                            modifier = Modifier.height(8.dp)
+                        )
+                    } else if (item.transaction.createdAt.day != transactions[index - 1].transaction.createdAt.day
+                    ) {
+                        Spacer(
+                            modifier = Modifier.height(8.dp)
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = SimpleDateFormat(
+                                    "E, dd MMM",
+                                    Locale.getDefault()
+                                ).format(item.transaction.createdAt),
+                                fontWeight = FontWeight.Bold,
+                            )
+                            val dayTotal = transactions
+                                .filter { it.transaction.createdAt.day == item.transaction.createdAt.day }
+                                .sumOf { it.transaction.amount }
+                            Text(
+                                text = formatCurrency(dayTotal, currency),
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        HorizontalDivider(
+                            thickness = 1.dp
+                        )
+                        Spacer(
+                            modifier = Modifier.height(12.dp)
+                        )
                     }
-                    Spacer(
-                        modifier = Modifier.height(32.dp),
+                    TransactionItem(
+                        category = item.category,
+                        transaction = item.transaction,
                     )
-
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
             }
-            itemsIndexed(
-                transactions
-            ) { index, item ->
-                if (index == 0) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = SimpleDateFormat(
-                                "E, dd MMM",
-                                Locale.getDefault()
-                            ).format(item.transaction.createdAt),
-                            fontWeight = FontWeight.Bold,
-                        )
-                        val dayTotal = transactions
-                            .filter { it.transaction.createdAt.day == item.transaction.createdAt.day }
-                            .sumOf { it.transaction.amount }
-                        Text(
-                            text = formatCurrency(dayTotal, currency),
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    HorizontalDivider(
-                        thickness = 1.dp
-                    )
-                    Spacer(
-                        modifier = Modifier.height(8.dp)
-                    )
-                } else if (item.transaction.createdAt.day != transactions[index - 1].transaction.createdAt.day
-                ) {
-                    Spacer(
-                        modifier = Modifier.height(8.dp)
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = SimpleDateFormat(
-                                "E, dd MMM",
-                                Locale.getDefault()
-                            ).format(item.transaction.createdAt),
-                            fontWeight = FontWeight.Bold,
-                        )
-                        val dayTotal = transactions
-                            .filter { it.transaction.createdAt.day == item.transaction.createdAt.day }
-                            .sumOf { it.transaction.amount }
-                        Text(
-                            text = formatCurrency(dayTotal, currency),
-                            fontWeight = FontWeight.Bold,
-                        )
-                    }
-                    HorizontalDivider(
-                        thickness = 1.dp
-                    )
-                    Spacer(
-                        modifier = Modifier.height(12.dp)
-                    )
-                }
-                TransactionItem(
-                    category = item.category,
-                    transaction = item.transaction,
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-        }
     }
 }
-
 
 @Composable
 fun TransactionItem(
